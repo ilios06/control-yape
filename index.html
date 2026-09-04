@@ -18,7 +18,6 @@
     }
     input:focus, select:focus { border-color: #2563eb; }
 
-    /* Botones Cámara y Galería */
     .buttons-container { display: flex; gap: 8px; margin-bottom: 6px; }
     .btn-action {
       flex: 1; padding: 11px 6px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center;
@@ -30,7 +29,6 @@
     #fileInfo { font-size: 12px; color: #64748b; margin-top: 4px; text-align: center; min-height: 16px; }
     #preview { width: 100%; max-height: 220px; object-fit: contain; margin-top: 8px; border-radius: 6px; display: none; background: #f8fafc; border: 1px solid #e2e8f0; }
 
-    /* Desplegable Datos de Factura */
     .factura-box {
       border: 1px solid #fed7aa; background: #fffbeb; border-radius: 8px; padding: 14px; margin-top: 14px;
       display: none; animation: fadeIn 0.2s ease-in-out;
@@ -44,7 +42,6 @@
     }
     .btn-submit:disabled { background-color: #cbd5e1; color: #64748b; cursor: not-allowed; }
 
-    /* Semáforo y Feedback */
     .status { margin-top: 16px; padding: 14px; border-radius: 8px; font-size: 13px; display: none; }
     .status.loading { display: block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .status.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -54,6 +51,7 @@
     .badge-AMARILLO { background: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
     .badge-ROJO { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     .data-summary { font-size: 12.5px; line-height: 1.6; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px; }
+    .alert-noprocesado { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 8px; border-radius: 6px; margin-bottom: 8px; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -63,13 +61,13 @@
   <p class="desc">Registro rápido y conciliación de Yape</p>
 
   <form id="ingresoForm">
-    <!-- 1. RUC Restaurante -->
+    <!-- RUC Restaurante -->
     <div class="form-group">
       <label for="rucRestaurante">RUC de Restaurante</label>
       <input type="text" id="rucRestaurante" placeholder="Ingresa los 11 dígitos" maxlength="11" pattern="\d{11}" required>
     </div>
 
-    <!-- 2. Concepto -->
+    <!-- Concepto -->
     <div class="form-group">
       <label for="concepto">Concepto</label>
       <select id="concepto" required>
@@ -78,7 +76,7 @@
       </select>
     </div>
 
-    <!-- 3. Foto comprobante -->
+    <!-- Comprobante -->
     <div class="form-group">
       <label>Comprobante físico / captura</label>
       <div class="buttons-container">
@@ -92,7 +90,7 @@
       <img id="preview" alt="Vista previa">
     </div>
 
-    <!-- 4. Desplegable Factura -->
+    <!-- Factura -->
     <div class="form-group">
       <label for="selectFactura">¿Requiere Factura?</label>
       <select id="selectFactura">
@@ -101,7 +99,6 @@
       </select>
     </div>
 
-    <!-- Sub-formulario Factura -->
     <div id="facturaBox" class="factura-box">
       <h4>Datos para Factura</h4>
       <div class="form-group">
@@ -155,7 +152,6 @@
     }
   });
 
-  // HD a 1800px y calidad 0.90
   function processAndCompressImage(file) {
     if (!file) return;
     fileInfo.innerText = "Optimizando comprobante...";
@@ -215,7 +211,7 @@
 
     btnSubmit.disabled = true;
     statusBox.className = 'status loading';
-    statusBox.innerHTML = '⚡ Analizando comprobante y registrando...';
+    statusBox.innerHTML = '⚡ Guardando y procesando comprobante...';
 
     const payload = {
       base64: optimizedBase64,
@@ -238,33 +234,54 @@
 
       if (response.status === 'success') {
         const sem = response.data.semaforo;
+        const noProcesado = response.data.observacion === "No procesado*";
         let icon = sem === "VERDE" ? "🟢" : (sem === "AMARILLO" ? "🟡" : "🔴");
 
         statusBox.className = 'status';
         statusBox.style.display = 'block';
-        statusBox.style.background = sem === "VERDE" ? "#ecfdf5" : (sem === "AMARILLO" ? "#fefce8" : "#fef2f2");
-        statusBox.style.border = sem === "VERDE" ? "1px solid #a7f3d0" : (sem === "AMARILLO" ? "1px solid #fef08a" : "1px solid #fecaca");
+        statusBox.style.background = noProcesado ? "#fff1f2" : (sem === "VERDE" ? "#ecfdf5" : (sem === "AMARILLO" ? "#fefce8" : "#fef2f2"));
+        statusBox.style.border = noProcesado ? "1px solid #fda4af" : (sem === "VERDE" ? "1px solid #a7f3d0" : (sem === "AMARILLO" ? "1px solid #fef08a" : "1px solid #fecaca"));
 
-        statusBox.innerHTML = `
+        let contenidoHTML = `
           <div class="semaforo-badge badge-${sem}">
             ${icon} FIDELIDAD: ${sem}
           </div>
-          ${response.data.observacion && response.data.observacion !== "Conforme" ? 
-            `<div style="font-size:12px; margin-bottom:6px; color:#b45309;"><b>Nota:</b> ${response.data.observacion}</div>` : ''}
+        `;
+
+        if (noProcesado) {
+          contenidoHTML += `
+            <div class="alert-noprocesado">
+              <b>⚠️ Foto guardada en Drive y Sheets:</b> Servidores de IA ocupados. Se registró como <b>No procesado*</b> para revisión manual en el consolidado.
+            </div>
+          `;
+        } else if (response.data.observacion && response.data.observacion !== "Conforme") {
+          contenidoHTML += `
+            <div style="font-size:12px; margin-bottom:6px; color:#b45309;"><b>Nota IA:</b> ${response.data.observacion}</div>
+          `;
+        }
+
+        contenidoHTML += `
           <div class="data-summary">
-            <b>Monto:</b> S/ ${response.data.monto}<br>
-            <b>Cliente:</b> ${response.data.nombre_cliente}<br>
-            <b>N° Operación:</b> ${response.data.numero_operacion}<br>
-            <b>Fecha/Hora:</b> ${response.data.fecha} ${response.data.hora}<br>
-            <b>Concepto:</b> ${response.data.concepto}
+            <b>Monto:</b> S/ ${response.data.monto || "Pendiente"}<br>
+            <b>Cliente:</b> ${response.data.nombre_cliente || "Pendiente"}<br>
+            <b>N° Operación:</b> ${response.data.numero_operacion || "Pendiente"}<br>
+            <b>Concepto:</b> ${response.data.concepto}<br>
+            <b>RUC Restaurante:</b> ${response.data.rucRestaurante}
+          </div>
+          <div style="margin-top:8px; font-weight:600; color:#0f766e; font-size:12px;">
+            ✅ Formulario listo para el siguiente ingreso.
           </div>
         `;
 
+        statusBox.innerHTML = contenidoHTML;
+
+        // Limpieza completa del formulario para permitir el siguiente ingreso de inmediato
         form.reset();
         preview.style.display = 'none';
         facturaBox.style.display = 'none';
         fileInfo.innerText = 'Ninguna foto seleccionada';
         optimizedBase64 = null;
+
       } else {
         statusBox.className = 'status error';
         statusBox.innerText = '❌ Error: ' + response.message;
