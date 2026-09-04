@@ -18,6 +18,7 @@
     }
     input:focus, select:focus { border-color: #2563eb; }
 
+    /* Botones Cámara y Galería */
     .buttons-container { display: flex; gap: 8px; margin-bottom: 6px; }
     .btn-action {
       flex: 1; padding: 11px 6px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center;
@@ -29,6 +30,7 @@
     #fileInfo { font-size: 12px; color: #64748b; margin-top: 4px; text-align: center; min-height: 16px; }
     #preview { width: 100%; max-height: 220px; object-fit: contain; margin-top: 8px; border-radius: 6px; display: none; background: #f8fafc; border: 1px solid #e2e8f0; }
 
+    /* Sección Factura Desplegable */
     .factura-box {
       border: 1px solid #fed7aa; background: #fffbeb; border-radius: 8px; padding: 14px; margin-top: 14px;
       display: none; animation: fadeIn 0.2s ease-in-out;
@@ -42,6 +44,7 @@
     }
     .btn-submit:disabled { background-color: #cbd5e1; color: #64748b; cursor: not-allowed; }
 
+    /* Semáforo y Feedback */
     .status { margin-top: 16px; padding: 14px; border-radius: 8px; font-size: 13px; display: none; }
     .status.loading { display: block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
     .status.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
@@ -61,13 +64,13 @@
   <p class="desc">Registro rápido y conciliación de Yape</p>
 
   <form id="ingresoForm">
-    <!-- RUC Restaurante -->
+    <!-- 1. RUC Restaurante -->
     <div class="form-group">
       <label for="rucRestaurante">RUC de Restaurante</label>
-      <input type="text" id="rucRestaurante" placeholder="Ingresa los 11 dígitos" maxlength="11" pattern="\d{11}" required>
+      <input type="text" id="rucRestaurante" inputmode="numeric" placeholder="Ingresa los 11 dígitos" maxlength="11" pattern="\d{11}" required>
     </div>
 
-    <!-- Concepto -->
+    <!-- 2. Concepto -->
     <div class="form-group">
       <label for="concepto">Concepto</label>
       <select id="concepto" required>
@@ -76,7 +79,7 @@
       </select>
     </div>
 
-    <!-- Comprobante -->
+    <!-- 3. Foto comprobante -->
     <div class="form-group">
       <label>Comprobante físico / captura</label>
       <div class="buttons-container">
@@ -90,7 +93,7 @@
       <img id="preview" alt="Vista previa">
     </div>
 
-    <!-- Factura -->
+    <!-- 4. Desplegable Factura -->
     <div class="form-group">
       <label for="selectFactura">¿Requiere Factura?</label>
       <select id="selectFactura">
@@ -99,11 +102,12 @@
       </select>
     </div>
 
+    <!-- Sub-formulario Factura -->
     <div id="facturaBox" class="factura-box">
       <h4>Datos para Factura</h4>
       <div class="form-group">
         <label for="facturaRuc">RUC Cliente</label>
-        <input type="text" id="facturaRuc" placeholder="RUC de 11 dígitos" maxlength="11">
+        <input type="text" id="facturaRuc" inputmode="numeric" placeholder="RUC de 11 dígitos" maxlength="11">
       </div>
       <div class="form-group">
         <label for="facturaRazonSocial">Nombre / Razón Social</label>
@@ -123,7 +127,7 @@
 
 <script>
   // ==========================================
-  // CONFIGURA TU URL /exec DE APPS SCRIPT AQUÍ
+  // CONFIGURA AQUÍ TU URL /exec DE APPS SCRIPT
   // ==========================================
   const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwQC623Mwn4KqvFwh42JbQ3QlZMWbfkbGun8u9kZ3-xOejYGrH04bGSyMe5gMsv7_R/exec";
 
@@ -138,6 +142,7 @@
   const btnSubmit = document.getElementById('btnSubmit');
   const statusBox = document.getElementById('statusBox');
 
+  // Control del desplegable de Factura
   selectFactura.addEventListener('change', function() {
     if (this.value === 'SI') {
       facturaBox.style.display = 'block';
@@ -152,6 +157,7 @@
     }
   });
 
+  // HD a 1800px y calidad 0.90 (equilibrio entre velocidad y nitidez OCR)
   function processAndCompressImage(file) {
     if (!file) return;
     fileInfo.innerText = "Optimizando comprobante...";
@@ -211,7 +217,7 @@
 
     btnSubmit.disabled = true;
     statusBox.className = 'status loading';
-    statusBox.innerHTML = '⚡ Guardando y procesando comprobante...';
+    statusBox.innerHTML = '⚡ Guardando en Drive y procesando con IA...';
 
     const payload = {
       base64: optimizedBase64,
@@ -224,8 +230,12 @@
     };
 
     try {
+      // Petición simple evitando preflight OPTIONS
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
+        mode: 'cors',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload)
       });
 
@@ -251,7 +261,7 @@
         if (noProcesado) {
           contenidoHTML += `
             <div class="alert-noprocesado">
-              <b>⚠️ Foto guardada en Drive y Sheets:</b> Servidores de IA ocupados. Se registró como <b>No procesado*</b> para revisión manual en el consolidado.
+              <b>⚠️ Foto guardada en Drive y registrada:</b> La IA no pudo extraer los datos. Se marcó como <b>No procesado*</b> para revisión manual en el consolidado.
             </div>
           `;
         } else if (response.data.observacion && response.data.observacion !== "Conforme") {
@@ -265,6 +275,7 @@
             <b>Monto:</b> S/ ${response.data.monto || "Pendiente"}<br>
             <b>Cliente:</b> ${response.data.nombre_cliente || "Pendiente"}<br>
             <b>N° Operación:</b> ${response.data.numero_operacion || "Pendiente"}<br>
+            <b>Fecha/Hora:</b> ${response.data.fecha || ""} ${response.data.hora || ""}<br>
             <b>Concepto:</b> ${response.data.concepto}<br>
             <b>RUC Restaurante:</b> ${response.data.rucRestaurante}
           </div>
@@ -275,7 +286,7 @@
 
         statusBox.innerHTML = contenidoHTML;
 
-        // Limpieza completa del formulario para permitir el siguiente ingreso de inmediato
+        // Limpiar el formulario para el siguiente registro
         form.reset();
         preview.style.display = 'none';
         facturaBox.style.display = 'none';
