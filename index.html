@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Control de Ingresos - Vouchers</title>
+  <title>Control de Ingresos - Yape</title>
   <style>
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: #f1f3f6; margin: 0; padding: 14px; display: flex; justify-content: center; }
@@ -18,7 +18,7 @@
     }
     input:focus, select:focus { border-color: #2563eb; }
 
-    /* Contenedor de Botones de Cámara / Galería */
+    /* Botones Cámara y Galería */
     .buttons-container { display: flex; gap: 8px; margin-bottom: 6px; }
     .btn-action {
       flex: 1; padding: 11px 6px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center;
@@ -28,9 +28,9 @@
     .btn-action:active { background: #742284; color: #fff; }
     input[type="file"] { display: none; }
     #fileInfo { font-size: 12px; color: #64748b; margin-top: 4px; text-align: center; min-height: 16px; }
-    #preview { width: 100%; max-height: 200px; object-fit: contain; margin-top: 8px; border-radius: 6px; display: none; background: #f8fafc; border: 1px solid #e2e8f0; }
+    #preview { width: 100%; max-height: 220px; object-fit: contain; margin-top: 8px; border-radius: 6px; display: none; background: #f8fafc; border: 1px solid #e2e8f0; }
 
-    /* Sección Factura Desplegable */
+    /* Desplegable Datos de Factura */
     .factura-box {
       border: 1px solid #fed7aa; background: #fffbeb; border-radius: 8px; padding: 14px; margin-top: 14px;
       display: none; animation: fadeIn 0.2s ease-in-out;
@@ -53,14 +53,14 @@
     .badge-VERDE { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .badge-AMARILLO { background: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
     .badge-ROJO { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .data-summary { font-size: 12px; line-height: 1.6; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px; }
+    .data-summary { font-size: 12.5px; line-height: 1.6; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px; }
   </style>
 </head>
 <body>
 
 <div class="card">
   <h2>Control de Ingresos</h2>
-  <p class="desc">Registro rápido y validación de comprobante</p>
+  <p class="desc">Registro rápido y conciliación de Yape</p>
 
   <form id="ingresoForm">
     <!-- 1. RUC Restaurante -->
@@ -78,7 +78,7 @@
       </select>
     </div>
 
-    <!-- 3. Foto / Voucher -->
+    <!-- 3. Foto comprobante -->
     <div class="form-group">
       <label>Comprobante físico / captura</label>
       <div class="buttons-container">
@@ -92,7 +92,7 @@
       <img id="preview" alt="Vista previa">
     </div>
 
-    <!-- 4. Desplegable Datos de Factura -->
+    <!-- 4. Desplegable Factura -->
     <div class="form-group">
       <label for="selectFactura">¿Requiere Factura?</label>
       <select id="selectFactura">
@@ -101,20 +101,20 @@
       </select>
     </div>
 
-    <!-- Sub-formulario condicional de Factura -->
+    <!-- Sub-formulario Factura -->
     <div id="facturaBox" class="factura-box">
-      <h4>Datos para emisión de Factura</h4>
+      <h4>Datos para Factura</h4>
       <div class="form-group">
         <label for="facturaRuc">RUC Cliente</label>
         <input type="text" id="facturaRuc" placeholder="RUC de 11 dígitos" maxlength="11">
       </div>
       <div class="form-group">
         <label for="facturaRazonSocial">Nombre / Razón Social</label>
-        <input type="text" id="facturaRazonSocial" placeholder="Nombre completo o Empresa">
+        <input type="text" id="facturaRazonSocial" placeholder="Razón Social">
       </div>
       <div class="form-group" style="margin-bottom: 0;">
         <label for="facturaCorreo">Correo Electrónico</label>
-        <input type="email" id="facturaCorreo" placeholder="facturacion@ejemplo.com">
+        <input type="email" id="facturaCorreo" placeholder="correo@empresa.com">
       </div>
     </div>
 
@@ -126,9 +126,9 @@
 
 <script>
   // ==========================================
-  // CONFIGURA AQUÍ TU URL /exec DE APPS SCRIPT
+  // CONFIGURA TU URL /exec DE APPS SCRIPT AQUÍ
   // ==========================================
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjaQeofIM_H-HLhazhTqQ2-2IOXL8mA7OFtWI8YkAj6_EIEso68wZmUGglCC-AN1JG/exec";
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_XXXXXXXXX/exec";
 
   let optimizedBase64 = null;
   const selectFactura = document.getElementById('selectFactura');
@@ -141,7 +141,6 @@
   const btnSubmit = document.getElementById('btnSubmit');
   const statusBox = document.getElementById('statusBox');
 
-  // Control del desplegable de Factura
   selectFactura.addEventListener('change', function() {
     if (this.value === 'SI') {
       facturaBox.style.display = 'block';
@@ -156,7 +155,7 @@
     }
   });
 
-  // Compresión HD a 1800px y calidad 0.90 (Rápido y nítido para la IA)
+  // HD a 1800px y calidad 0.90
   function processAndCompressImage(file) {
     if (!file) return;
     fileInfo.innerText = "Optimizando comprobante...";
@@ -229,7 +228,6 @@
     };
 
     try {
-      // Envío sin CORS preflight issues hacia Apps Script
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify(payload)
@@ -255,10 +253,10 @@
             `<div style="font-size:12px; margin-bottom:6px; color:#b45309;"><b>Nota:</b> ${response.data.observacion}</div>` : ''}
           <div class="data-summary">
             <b>Monto:</b> S/ ${response.data.monto}<br>
-            <b>Operación:</b> ${response.data.numero_operacion}<br>
-            <b>Fecha:</b> ${response.data.fecha}<br>
-            <b>Concepto:</b> ${response.data.concepto}<br>
-            <b>Factura:</b> ${response.data.requiereFactura}
+            <b>Cliente:</b> ${response.data.nombre_cliente}<br>
+            <b>N° Operación:</b> ${response.data.numero_operacion}<br>
+            <b>Fecha/Hora:</b> ${response.data.fecha} ${response.data.hora}<br>
+            <b>Concepto:</b> ${response.data.concepto}
           </div>
         `;
 
