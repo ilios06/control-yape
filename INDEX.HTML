@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control de Ingresos - Vouchers</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f1f3f6; margin: 0; padding: 14px; display: flex; justify-content: center; }
+    .card { background: #ffffff; max-width: 460px; width: 100%; border-radius: 12px; padding: 22px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+    h2 { margin-top: 0; color: #1e3a8a; font-size: 19px; text-align: center; margin-bottom: 4px; }
+    p.desc { font-size: 13px; color: #64748b; text-align: center; margin-top: 0; margin-bottom: 18px; }
+    
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 5px; color: #1e293b; }
+    input[type="text"], input[type="email"], select {
+      width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: #fff;
+    }
+    input:focus, select:focus { border-color: #2563eb; }
+
+    /* Contenedor de Botones de Cámara / Galería */
+    .buttons-container { display: flex; gap: 8px; margin-bottom: 6px; }
+    .btn-action {
+      flex: 1; padding: 11px 6px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; border: 1px solid #742284;
+      background: #faf5fc; color: #742284;
+    }
+    .btn-action:active { background: #742284; color: #fff; }
+    input[type="file"] { display: none; }
+    #fileInfo { font-size: 12px; color: #64748b; margin-top: 4px; text-align: center; min-height: 16px; }
+    #preview { width: 100%; max-height: 200px; object-fit: contain; margin-top: 8px; border-radius: 6px; display: none; background: #f8fafc; border: 1px solid #e2e8f0; }
+
+    /* Sección Factura Desplegable */
+    .factura-box {
+      border: 1px solid #fed7aa; background: #fffbeb; border-radius: 8px; padding: 14px; margin-top: 14px;
+      display: none; animation: fadeIn 0.2s ease-in-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .factura-box h4 { margin: 0 0 10px 0; color: #9a3412; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .btn-submit {
+      width: 100%; padding: 13px; background-color: #00d39e; color: #064e3b; font-size: 15px; font-weight: bold;
+      border: none; border-radius: 8px; cursor: pointer; margin-top: 16px;
+    }
+    .btn-submit:disabled { background-color: #cbd5e1; color: #64748b; cursor: not-allowed; }
+
+    /* Semáforo y Feedback */
+    .status { margin-top: 16px; padding: 14px; border-radius: 8px; font-size: 13px; display: none; }
+    .status.loading { display: block; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    
+    .semaforo-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin-bottom: 8px; }
+    .badge-VERDE { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .badge-AMARILLO { background: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
+    .badge-ROJO { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .data-summary { font-size: 12px; line-height: 1.6; margin-top: 6px; border-top: 1px dashed rgba(0,0,0,0.15); padding-top: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Control de Ingresos</h2>
+  <p class="desc">Registro rápido y validación de comprobante</p>
+
+  <form id="ingresoForm">
+    <!-- 1. RUC Restaurante -->
+    <div class="form-group">
+      <label for="rucRestaurante">RUC de Restaurante</label>
+      <input type="text" id="rucRestaurante" placeholder="Ingresa los 11 dígitos" maxlength="11" pattern="\d{11}" required>
+    </div>
+
+    <!-- 2. Concepto -->
+    <div class="form-group">
+      <label for="concepto">Concepto</label>
+      <select id="concepto" required>
+        <option value="Comida">Comida</option>
+        <option value="Bebida">Bebida</option>
+      </select>
+    </div>
+
+    <!-- 3. Foto / Voucher -->
+    <div class="form-group">
+      <label>Comprobante físico / captura</label>
+      <div class="buttons-container">
+        <label for="cameraInput" class="btn-action">📷 Tomar Foto</label>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment">
+
+        <label for="galleryInput" class="btn-action">📁 Adjuntar Foto</label>
+        <input type="file" id="galleryInput" accept="image/*">
+      </div>
+      <div id="fileInfo">Ninguna foto seleccionada</div>
+      <img id="preview" alt="Vista previa">
+    </div>
+
+    <!-- 4. Desplegable Datos de Factura -->
+    <div class="form-group">
+      <label for="selectFactura">¿Requiere Factura?</label>
+      <select id="selectFactura">
+        <option value="NO">NO</option>
+        <option value="SI">SÍ</option>
+      </select>
+    </div>
+
+    <!-- Sub-formulario condicional de Factura -->
+    <div id="facturaBox" class="factura-box">
+      <h4>Datos para emisión de Factura</h4>
+      <div class="form-group">
+        <label for="facturaRuc">RUC Cliente</label>
+        <input type="text" id="facturaRuc" placeholder="RUC de 11 dígitos" maxlength="11">
+      </div>
+      <div class="form-group">
+        <label for="facturaRazonSocial">Nombre / Razón Social</label>
+        <input type="text" id="facturaRazonSocial" placeholder="Nombre completo o Empresa">
+      </div>
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="facturaCorreo">Correo Electrónico</label>
+        <input type="email" id="facturaCorreo" placeholder="facturacion@ejemplo.com">
+      </div>
+    </div>
+
+    <button type="submit" id="btnSubmit" class="btn-submit">Validar y Registrar</button>
+  </form>
+
+  <div id="statusBox" class="status"></div>
+</div>
+
+<script>
+  // ==========================================
+  // CONFIGURA AQUÍ TU URL /exec DE APPS SCRIPT
+  // ==========================================
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjaQeofIM_H-HLhazhTqQ2-2IOXL8mA7OFtWI8YkAj6_EIEso68wZmUGglCC-AN1JG/exec";
+
+  let optimizedBase64 = null;
+  const selectFactura = document.getElementById('selectFactura');
+  const facturaBox = document.getElementById('facturaBox');
+  const cameraInput = document.getElementById('cameraInput');
+  const galleryInput = document.getElementById('galleryInput');
+  const preview = document.getElementById('preview');
+  const fileInfo = document.getElementById('fileInfo');
+  const form = document.getElementById('ingresoForm');
+  const btnSubmit = document.getElementById('btnSubmit');
+  const statusBox = document.getElementById('statusBox');
+
+  // Control del desplegable de Factura
+  selectFactura.addEventListener('change', function() {
+    if (this.value === 'SI') {
+      facturaBox.style.display = 'block';
+      document.getElementById('facturaRuc').required = true;
+      document.getElementById('facturaRazonSocial').required = true;
+      document.getElementById('facturaCorreo').required = true;
+    } else {
+      facturaBox.style.display = 'none';
+      document.getElementById('facturaRuc').required = false;
+      document.getElementById('facturaRazonSocial').required = false;
+      document.getElementById('facturaCorreo').required = false;
+    }
+  });
+
+  // Compresión HD a 1800px y calidad 0.90 (Rápido y nítido para la IA)
+  function processAndCompressImage(file) {
+    if (!file) return;
+    fileInfo.innerText = "Optimizando comprobante...";
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const maxDim = 1800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        optimizedBase64 = canvas.toDataURL('image/jpeg', 0.90);
+        preview.src = optimizedBase64;
+        preview.style.display = 'block';
+        fileInfo.innerText = "Comprobante listo en HD (" + Math.round(optimizedBase64.length / 1024) + " KB)";
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  cameraInput.addEventListener('change', (e) => processAndCompressImage(e.target.files[0]));
+  galleryInput.addEventListener('change', (e) => processAndCompressImage(e.target.files[0]));
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    if (!optimizedBase64) {
+      alert("Por favor toma o sube la foto del comprobante.");
+      return;
+    }
+
+    const rucVal = document.getElementById('rucRestaurante').value.trim();
+    if (rucVal.length !== 11) {
+      alert("El RUC del restaurante debe contener exactamente 11 dígitos.");
+      return;
+    }
+
+    const requiereFactura = selectFactura.value === 'SI';
+
+    btnSubmit.disabled = true;
+    statusBox.className = 'status loading';
+    statusBox.innerHTML = '⚡ Analizando comprobante y registrando...';
+
+    const payload = {
+      base64: optimizedBase64,
+      rucRestaurante: rucVal,
+      concepto: document.getElementById('concepto').value,
+      requiereFactura: requiereFactura,
+      facturaRuc: requiereFactura ? document.getElementById('facturaRuc').value.trim() : '',
+      facturaRazonSocial: requiereFactura ? document.getElementById('facturaRazonSocial').value.trim() : '',
+      facturaCorreo: requiereFactura ? document.getElementById('facturaCorreo').value.trim() : ''
+    };
+
+    try {
+      // Envío sin CORS preflight issues hacia Apps Script
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      const response = await res.json();
+      btnSubmit.disabled = false;
+
+      if (response.status === 'success') {
+        const sem = response.data.semaforo;
+        let icon = sem === "VERDE" ? "🟢" : (sem === "AMARILLO" ? "🟡" : "🔴");
+
+        statusBox.className = 'status';
+        statusBox.style.display = 'block';
+        statusBox.style.background = sem === "VERDE" ? "#ecfdf5" : (sem === "AMARILLO" ? "#fefce8" : "#fef2f2");
+        statusBox.style.border = sem === "VERDE" ? "1px solid #a7f3d0" : (sem === "AMARILLO" ? "1px solid #fef08a" : "1px solid #fecaca");
+
+        statusBox.innerHTML = `
+          <div class="semaforo-badge badge-${sem}">
+            ${icon} FIDELIDAD: ${sem}
+          </div>
+          ${response.data.observacion && response.data.observacion !== "Conforme" ? 
+            `<div style="font-size:12px; margin-bottom:6px; color:#b45309;"><b>Nota:</b> ${response.data.observacion}</div>` : ''}
+          <div class="data-summary">
+            <b>Monto:</b> S/ ${response.data.monto}<br>
+            <b>Operación:</b> ${response.data.numero_operacion}<br>
+            <b>Fecha:</b> ${response.data.fecha}<br>
+            <b>Concepto:</b> ${response.data.concepto}<br>
+            <b>Factura:</b> ${response.data.requiereFactura}
+          </div>
+        `;
+
+        form.reset();
+        preview.style.display = 'none';
+        facturaBox.style.display = 'none';
+        fileInfo.innerText = 'Ninguna foto seleccionada';
+        optimizedBase64 = null;
+      } else {
+        statusBox.className = 'status error';
+        statusBox.innerText = '❌ Error: ' + response.message;
+      }
+    } catch (err) {
+      btnSubmit.disabled = false;
+      statusBox.className = 'status error';
+      statusBox.innerText = '❌ Error de red / comunicación: ' + err.message;
+    }
+  });
+</script>
+
+</body>
+</html>
